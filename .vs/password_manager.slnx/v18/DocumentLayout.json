@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\MrPurk\\source\\repos\\password_manager\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{8A1609DB-4236-4392-8FE0-AFD4C8EAF677}|password_manager\\password_manager.vcxproj|C:\\Users\\MrPurk\\source\\repos\\password_manager\\password_manager\\password_manager.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{8A1609DB-4236-4392-8FE0-AFD4C8EAF677}|password_manager\\password_manager.vcxproj|solutionrelative:password_manager\\password_manager.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "password_manager.cpp",
+              "DocumentMoniker": "C:\\Users\\MrPurk\\source\\repos\\password_manager\\password_manager\\password_manager.cpp",
+              "RelativeDocumentMoniker": "password_manager\\password_manager.cpp",
+              "ToolTip": "C:\\Users\\MrPurk\\source\\repos\\password_manager\\password_manager\\password_manager.cpp",
+              "RelativeToolTip": "password_manager\\password_manager.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-03-19T07:24:57.779Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
