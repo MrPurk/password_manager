@@ -10,6 +10,7 @@
                 "/nologo",
                 "${file}",
                 "/link",
+                "/SUBSYSTEM:WINDOWS",  // ← ДОБАВЬТЕ ЭТУ СТРОКУ
                 "user32.lib",
                 "gdi32.lib",
                 "comctl32.lib",
