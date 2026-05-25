@@ -13,34 +13,55 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Шаг 1: Добавляем MSBuild в PATH (необходимо для сборки в Windows)
+      # Шаг 1: Добавляем MSBuild в PATH
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
-      # Шаг 2: Устанавливаем Cppcheck через Chocolatey (пакетный менеджер Windows)
+      # Шаг 2: Устанавливаем Cppcheck через Chocolatey
       - name: Install Cppcheck
         run: |
           choco install cppcheck -y
 
-      # Шаг 3: Запускаем статический анализ Cppcheck
-      # Анализируем все файлы .cpp и .h, сохраняем результат в cppcheck.txt
-      # "|| exit 0" гарантирует, что воркфлоу не упадет, если будут найдены предупреждения (аналог "|| true")
+      # ⭐ Шаг 3: НАСТРОЙКА ПРОЕКТА ДЛЯ GUI ⭐
+      - name: Configure project for GUI
+        shell: pwsh  # Используем PowerShell Core
+        run: |
+          # Проверяем, существует ли файл
+          if (Test-Path "password_manager/password_manager.vcxproj") {
+            # Читаем содержимое файла
+            $content = Get-Content "password_manager/password_manager.vcxproj" -Raw
+            
+            # Добавляем PropertyGroup с настройками перед закрывающим тегом </Project>
+            $newContent = $content -replace '(</Project>)', @'
+  <PropertyGroup>
+    <SubSystem>Windows</SubSystem>
+    <EntryPoint>WinMain</EntryPoint>
+  </PropertyGroup>
+$1
+'@
+            
+            # Сохраняем изменения
+            Set-Content "password_manager/password_manager.vcxproj" -Value $newContent -NoNewline
+            
+            Write-Host "✓ Project configured for Windows subsystem"
+          } else {
+            Write-Host "⚠ File not found: password_manager/password_manager.vcxproj"
+          }
+
+      # Шаг 4: Запускаем статический анализ Cppcheck
       - name: Run Cppcheck Analysis
-        # Переключаем шаг на использование bash, чтобы работала конструкция "|| true"
         shell: bash
         run: |
-          # Указываем точный путь к библиотекам, чтобы обойти баг с std.cfg
           cppcheck --enable=all --inconclusive --data-dir="C:/Program Files/Cppcheck/cfg" . --output-file=cppcheck.txt || true
 
-      # Шаг 4: Сборка проекта (опционально, но полезно для C++)
-      # Замени 'YourSolution.sln' на имя твоего файла решения (Solution)
+      # Шаг 5: Сборка проекта
       - name: Build Project
         run: |
           msbuild password_manager/password_manager.vcxproj /p:Configuration=Release /p:PlatformToolset=v143
 
-      # Шаг 5: Загрузка артефакта с отчетом анализа
+      # Шаг 6: Загрузка артефакта с отчетом анализа
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4  # <-- Исправлено здесь!
+        uses: actions/upload-artifact@v4
         with:
           name: cppcheck-report
           path: cppcheck.txt
