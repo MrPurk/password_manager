@@ -1,0 +1,44 @@
+name: C++ Code Analysis
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      # Новый шаг
+      - name: Configure project for GUI
+        shell: powershell
+        run: |
+          (Get-Content password_manager/password_manager.vcxproj) `
+            -replace '</Project>','<PropertyGroup><SubSystem>Windows</SubSystem><EntryPoint>WinMain</EntryPoint></PropertyGroup></Project>' |
+            Set-Content password_manager/password_manager.vcxproj
+
+      - name: Install Cppcheck
+        run: |
+          choco install cppcheck -y
+
+      - name: Run Cppcheck Analysis
+        shell: bash
+        run: |
+          cppcheck --enable=all --inconclusive --data-dir="C:/Program Files/Cppcheck/cfg" . --output-file=cppcheck.txt || true
+
+      - name: Build Project
+        run: |
+          msbuild password_manager/password_manager.vcxproj /p:Configuration=Release /p:PlatformToolset=v143
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppcheck-report
+          path: cppcheck.txt
