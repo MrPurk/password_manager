@@ -13,53 +13,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Шаг 1: Добавляем MSBuild в PATH
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
-      # Шаг 2: Устанавливаем Cppcheck через Chocolatey
+      # Новый шаг
+      - name: Configure project for GUI
+        shell: powershell
+        run: |
+          (Get-Content password_manager/password_manager.vcxproj) `
+            -replace '</Project>','<PropertyGroup><SubSystem>Windows</SubSystem><EntryPoint>WinMain</EntryPoint></PropertyGroup></Project>' |
+            Set-Content password_manager/password_manager.vcxproj
+
       - name: Install Cppcheck
         run: |
           choco install cppcheck -y
 
-      # ⭐ Шаг 3: НАСТРОЙКА ПРОЕКТА ДЛЯ GUI ⭐
-      - name: Configure project for GUI
-        shell: pwsh  # Используем PowerShell Core
-        run: |
-          # Проверяем, существует ли файл
-          if (Test-Path "password_manager/password_manager.vcxproj") {
-            # Читаем содержимое файла
-            $content = Get-Content "password_manager/password_manager.vcxproj" -Raw
-            
-            # Добавляем PropertyGroup с настройками перед закрывающим тегом </Project>
-            $newContent = $content -replace '(</Project>)', @'
-  <PropertyGroup>
-    <SubSystem>Windows</SubSystem>
-    <EntryPoint>WinMain</EntryPoint>
-  </PropertyGroup>
-$1
-'@
-            
-            # Сохраняем изменения
-            Set-Content "password_manager/password_manager.vcxproj" -Value $newContent -NoNewline
-            
-            Write-Host "✓ Project configured for Windows subsystem"
-          } else {
-            Write-Host "⚠ File not found: password_manager/password_manager.vcxproj"
-          }
-
-      # Шаг 4: Запускаем статический анализ Cppcheck
       - name: Run Cppcheck Analysis
         shell: bash
         run: |
           cppcheck --enable=all --inconclusive --data-dir="C:/Program Files/Cppcheck/cfg" . --output-file=cppcheck.txt || true
 
-      # Шаг 5: Сборка проекта
       - name: Build Project
         run: |
           msbuild password_manager/password_manager.vcxproj /p:Configuration=Release /p:PlatformToolset=v143
 
-      # Шаг 6: Загрузка артефакта с отчетом анализа
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
