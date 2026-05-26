@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Проверка надежности паролей</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 700px;
+        }
+
+        th, td {
+            border: 1px solid black;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .weak {
+            color: red;
+        }
+
+        .medium {
+            color: orange;
+        }
+
+        .strong {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Анализ паролей</h1>
+
+<table>
+    <tr>
+        <th>Сервис</th>
+        <th>Надежность</th>
+    </tr>
+
+    {% for item in passwords %}
+    <tr>
+
+        <td>{{ item.service }}</td>
+
+        <td
+            class="
+            {% if item.strength == 'Очень слабый' %}
+                weak
+            {% elif item.strength == 'Слабый' %}
+                weak
+            {% elif item.strength == 'Средний' %}
+                medium
+            {% else %}
+                strong
+            {% endif %}
+            "
+        >
+            {{ item.strength }}
+        </td>
+
+    </tr>
+    {% endfor %}
+
+</table>
+
+</body>
+</html>
