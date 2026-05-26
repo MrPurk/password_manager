@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include <codecvt>
+#include <locale>
 
 using namespace std;
 
@@ -102,89 +104,16 @@ void setControlsEnabled(bool enabled) {
     }
 }
 
-string bytesToHex(const string& bytes) {
-    const char* hexDigits = "0123456789ABCDEF";
-    string result;
-
-    for (unsigned char c : bytes) {
-        result += hexDigits[c >> 4];
-        result += hexDigits[c & 15];
-    }
-
-    return result;
+string wstringToUtf8(const wstring& str)
+{
+    wstring_convert<codecvt_utf8<wchar_t>> converter;
+    return converter.to_bytes(str);
 }
 
-int hexValue(char c) {
-    if (c >= '0' && c <= '9') {
-        return c - '0';
-    }
-
-    if (c >= 'A' && c <= 'F') {
-        return c - 'A' + 10;
-    }
-
-    if (c >= 'a' && c <= 'f') {
-        return c - 'a' + 10;
-    }
-
-    return -1;
-}
-
-bool hexToBytes(const string& hex, string& bytes) {
-    if (hex.size() % 2 != 0) {
-        return false;
-    }
-
-    bytes.clear();
-
-    for (size_t i = 0; i < hex.size(); i += 2) {
-        int high = hexValue(hex[i]);
-        int low = hexValue(hex[i + 1]);
-
-        if (high == -1 || low == -1) {
-            return false;
-        }
-
-        bytes += static_cast<char>((high << 4) | low);
-    }
-
-    return true;
-}
-
-string wstringToBytes(const wstring& text) {
-    string bytes;
-
-    for (wchar_t ch : text) {
-        uint32_t value = static_cast<uint32_t>(ch);
-
-        bytes += static_cast<char>(value & 0xFF);
-        bytes += static_cast<char>((value >> 8) & 0xFF);
-        bytes += static_cast<char>((value >> 16) & 0xFF);
-        bytes += static_cast<char>((value >> 24) & 0xFF);
-    }
-
-    return bytes;
-}
-
-bool bytesToWString(const string& bytes, wstring& text) {
-    if (bytes.size() % 4 != 0) {
-        return false;
-    }
-
-    text.clear();
-
-    for (size_t i = 0; i < bytes.size(); i += 4) {
-        uint32_t value = 0;
-
-        value |= static_cast<unsigned char>(bytes[i]);
-        value |= static_cast<unsigned char>(bytes[i + 1]) << 8;
-        value |= static_cast<unsigned char>(bytes[i + 2]) << 16;
-        value |= static_cast<unsigned char>(bytes[i + 3]) << 24;
-
-        text += static_cast<wchar_t>(value);
-    }
-
-    return true;
+wstring utf8ToWstring(const string& str)
+{
+    wstring_convert<codecvt_utf8<wchar_t>> converter;
+    return converter.from_bytes(str);
 }
 
 // ===================== ГЕНЕРАТОР ПАРОЛЕЙ =====================
@@ -253,129 +182,6 @@ private:
     wstring masterPassword;
     vector<PasswordRecord> records;
 
-    uint64_t fnv1aHash(const wstring& text) const {
-        uint64_t hash = 14695981039346656037ull;
-        const uint64_t prime = 1099511628211ull;
-
-        for (wchar_t ch : text) {
-            uint32_t value = static_cast<uint32_t>(ch);
-
-            for (int i = 0; i < 4; i++) {
-                unsigned char byte = static_cast<unsigned char>((value >> (i * 8)) & 0xFF);
-                hash ^= byte;
-                hash *= prime;
-            }
-        }
-
-        return hash;
-    }
-
-    string hashToHex(uint64_t value) const {
-        stringstream ss;
-        ss << hex << uppercase << value;
-        return ss.str();
-    }
-
-    string makePlainRecord(const PasswordRecord& record) const {
-        wstring text;
-
-        text += to_wstring(record.service.size()) + L"#" + record.service;
-        text += to_wstring(record.login.size()) + L"#" + record.login;
-        text += to_wstring(record.password.size()) + L"#" + record.password;
-
-        return wstringToBytes(text);
-    }
-
-    bool readField(const wstring& text, size_t& position, wstring& result) const {
-        size_t separatorPos = text.find(L'#', position);
-
-        if (separatorPos == wstring::npos) {
-            return false;
-        }
-
-        wstring lengthText = text.substr(position, separatorPos - position);
-
-        if (lengthText.empty()) {
-            return false;
-        }
-
-        for (wchar_t c : lengthText) {
-            if (c < L'0' || c > L'9') {
-                return false;
-            }
-        }
-
-        size_t length = stoul(lengthText);
-        position = separatorPos + 1;
-
-        if (position + length > text.size()) {
-            return false;
-        }
-
-        result = text.substr(position, length);
-        position += length;
-
-        return true;
-    }
-
-    bool parsePlainRecord(const string& bytes, PasswordRecord& record) const {
-        wstring text;
-
-        if (!bytesToWString(bytes, text)) {
-            return false;
-        }
-
-        size_t position = 0;
-
-        if (!readField(text, position, record.service)) {
-            return false;
-        }
-
-        if (!readField(text, position, record.login)) {
-            return false;
-        }
-
-        if (!readField(text, position, record.password)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    string encryptToHex(const string& plainBytes, int recordIndex) const {
-        uint64_t seed = fnv1aHash(masterPassword + L"|" + to_wstring(recordIndex) + L"|vault");
-        mt19937_64 randomGenerator(seed);
-
-        string encrypted;
-
-        for (unsigned char c : plainBytes) {
-            unsigned char key = static_cast<unsigned char>(randomGenerator() & 0xFF);
-            encrypted += static_cast<char>(c ^ key);
-        }
-
-        return bytesToHex(encrypted);
-    }
-
-    bool decryptFromHex(const string& hexText, int recordIndex, string& resultBytes) const {
-        string encrypted;
-
-        if (!hexToBytes(hexText, encrypted)) {
-            return false;
-        }
-
-        uint64_t seed = fnv1aHash(masterPassword + L"|" + to_wstring(recordIndex) + L"|vault");
-        mt19937_64 randomGenerator(seed);
-
-        resultBytes.clear();
-
-        for (unsigned char c : encrypted) {
-            unsigned char key = static_cast<unsigned char>(randomGenerator() & 0xFF);
-            resultBytes += static_cast<char>(c ^ key);
-        }
-
-        return true;
-    }
-
 public:
     PasswordStorage(const string& filename)
         : filename(filename) {}
@@ -399,25 +205,30 @@ public:
         }
 
         string header;
-        string hashLine;
-
         getline(file, header);
-        getline(file, hashLine);
 
         if (header != "PASSWORD_MANAGER_GUI_V1") {
             return false;
         }
 
-        string prefix = "MASTER_HASH=";
+        string masterLine;
+        getline(file, masterLine);
 
-        if (hashLine.find(prefix) != 0) {
+        string prefix = "MASTER_PASSWORD=";
+
+        if (masterLine.find(prefix) != 0) {
             return false;
         }
 
-        string savedHash = hashLine.substr(prefix.size());
-        string enteredHash = hashToHex(fnv1aHash(master));
+        string savedPassword =
+            masterLine.substr(prefix.size());
 
-        if (savedHash != enteredHash) {
+        string enteredPassword(
+            master.begin(),
+            master.end()
+        );
+
+        if (savedPassword != enteredPassword) {
             return false;
         }
 
@@ -425,27 +236,45 @@ public:
         records.clear();
 
         string line;
-        int recordIndex = 0;
 
         while (getline(file, line)) {
-            string dataPrefix = "DATA=";
 
-            if (line.find(dataPrefix) != 0) {
+            if (line.find("SERVICE=") != 0) {
                 continue;
             }
 
-            string encryptedHex = line.substr(dataPrefix.size());
-            string plainBytes;
+            PasswordRecord record;
 
-            if (decryptFromHex(encryptedHex, recordIndex, plainBytes)) {
-                PasswordRecord record;
+            string service =
+                line.substr(8);
 
-                if (parsePlainRecord(plainBytes, record)) {
-                    records.push_back(record);
-                }
+            if (!getline(file, line)) {
+                break;
             }
 
-            recordIndex++;
+            if (line.find("LOGIN=") != 0) {
+                break;
+            }
+
+            string login =
+                line.substr(6);
+
+            if (!getline(file, line)) {
+                break;
+            }
+
+            if (line.find("PASSWORD=") != 0) {
+                break;
+            }
+
+            string password =
+                line.substr(9);
+
+            record.service = utf8ToWstring(service);
+            record.login = utf8ToWstring(login);
+            record.password = utf8ToWstring(password);
+
+            records.push_back(record);
         }
 
         return true;
@@ -459,13 +288,33 @@ public:
         }
 
         file << "PASSWORD_MANAGER_GUI_V1\n";
-        file << "MASTER_HASH=" << hashToHex(fnv1aHash(masterPassword)) << "\n";
 
-        for (size_t i = 0; i < records.size(); i++) {
-            string plainBytes = makePlainRecord(records[i]);
-            string encrypted = encryptToHex(plainBytes, static_cast<int>(i));
+        string master(
+            masterPassword.begin(),
+            masterPassword.end()
+        );
 
-            file << "DATA=" << encrypted << "\n";
+        file << "MASTER_PASSWORD="
+            << master
+            << "\n";
+
+        for (const auto& record : records) {
+
+            string service = wstringToUtf8(record.service);
+            string login = wstringToUtf8(record.login);
+            string password = wstringToUtf8(record.password);
+
+            file << "SERVICE="
+                << service
+                << "\n";
+
+            file << "LOGIN="
+                << login
+                << "\n";
+
+            file << "PASSWORD="
+                << password
+                << "\n";
         }
 
         return true;
@@ -477,11 +326,14 @@ public:
     }
 
     bool removeRecord(int index) {
-        if (index < 0 || index >= static_cast<int>(records.size())) {
+
+        if (index < 0 ||
+            index >= static_cast<int>(records.size())) {
             return false;
         }
 
         records.erase(records.begin() + index);
+
         return save();
     }
 
@@ -493,7 +345,7 @@ public:
 // ===================== ГЛОБАЛЬНЫЕ ОБЪЕКТЫ =====================
 
 PasswordGenerator passwordGenerator;
-PasswordStorage storage("vault_gui.txt");
+PasswordStorage storage("../vault_gui.txt");
 bool vaultOpened = false;
 
 // ===================== ОБНОВЛЕНИЕ СПИСКА =====================
