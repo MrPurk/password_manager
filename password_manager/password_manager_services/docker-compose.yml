@@ -1,19 +1,34 @@
+version: '3.8'
 
 services:
   backup_service:
-    build: ./backup_service
-    container_name: password_backup_container
-    ports:
-      - "5001:5001"
+    image: backup_service:latest
     volumes:
-      - ..:/password_manager
-    restart: always
+      - ../../password_manager:/password_manager
+    networks:
+      - swarm_network
+    deploy:
+      replicas: 2
+
 
   checker_service:
-    build: ./checker_service
-    container_name: password_checker_container
-    ports:
-      - "5002:5002"
+    image: checker_service:latest
     volumes:
-      - ..:/password_manager
-    restart: always
+      - ../../password_manager:/password_manager
+    networks:
+      - swarm_network
+    deploy:
+      replicas: 2
+
+
+  nginx_service:
+    build: ./nginx
+    image: nginx_swarm:latest
+    ports:
+      - "80:80"
+    networks:
+      - swarm_network
+
+networks:
+  swarm_network:
+    driver: overlay
