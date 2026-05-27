@@ -345,7 +345,7 @@ public:
 // ===================== ГЛОБАЛЬНЫЕ ОБЪЕКТЫ =====================
 
 PasswordGenerator passwordGenerator;
-PasswordStorage storage("../vault_gui.txt");
+PasswordStorage storage("./vault_gui.txt");
 bool vaultOpened = false;
 
 // ===================== ОБНОВЛЕНИЕ СПИСКА =====================
